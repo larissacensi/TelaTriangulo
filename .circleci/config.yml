@@ -1,110 +1,28 @@
-version: 2
-jobs:
-  build:
-    docker:
-      - image: ubuntu:14.04
+version: 2 # use CircleCI 2.0
+jobs: # a collection of steps
+  build: # runs not using Workflows must have a `build` job as entry point
 
-      - image: mongo:2.6.8
-        command: [mongod, --smallfiles]
+    working_directory: ~/circleci-test # directory where steps will run
 
-      - image: postgres:9.4.1
-        # some containers require setting environment variables
-        environment:
-          POSTGRES_USER: root
+    docker: # run the steps with Docker
+      - image: circleci/openjdk:8-jdk # ...with this image as the primary container; this is where all `steps` will run
 
-      - image: redis@sha256:54057dd7e125ca41afe526a877e8bd35ec2cdd33b9217e022ed37bdcf7d09673
+steps: # a collection of executable commands
 
-      - image: rabbitmq:3.5.4
+      - checkout # check out source code to working directory
 
-    environment:
-      TEST_REPORTS: /tmp/test-reports
+      - restore_cache: # restore the saved cache after the first run or if `pom.xml` has changed
+          key: circleci-test-{{ checksum "pom.xml" }}
 
-    working_directory: ~/my-project
+      - run: mvn dependency:go-offline # gets the project dependencies
 
-    branches:
-      ignore:
-        - develop
-        - /feature-.*/
-
-    steps:
-      - checkout
-
-      - run:
-          command: echo 127.0.0.1 devhost | sudo tee -a /etc/hosts
-
-      # Create Postgres users and database
-      # Note the YAML heredoc '|' for nicer formatting
-      - run: |
-          sudo -u root createuser -h localhost --superuser ubuntu &&
-          sudo createdb -h localhost test_db
-
-      - restore_cache:
-          keys:
-            - v1-my-project-{{ checksum "project.clj" }}
-            - v1-my-project-
-
-      - run:
-          environment:
-            SSH_TARGET: "localhost"
-            TEST_ENV: "linux"
-          command: |
-            set -xu
-            mkdir -p ${TEST_REPORTS}
-            run-tests.sh
-            cp out/tests/*.xml ${TEST_REPORTS}
-
-      - run: |
-          set -xu
-          mkdir -p /tmp/artifacts
-          create_jars.sh ${CIRCLE_BUILD_NUM}
-          cp *.jar /tmp/artifacts
-
-      - save_cache:
-          key: v1-my-project-{{ checksum "project.clj" }}
+      - save_cache: # saves the project dependencies
           paths:
             - ~/.m2
+          key: circleci-test-{{ checksum "pom.xml" }}- run: mvn package # run the actual tests
 
-      # Save artifacts
-      - store_artifacts:
-          path: /tmp/artifacts
-          destination: build
+      - store_test_results: # uploads the test metadata from the `target/surefire-reports` directory so that it can show up in the CircleCI dashboard.
+          path: target/surefire-reports
 
-      # Upload test results
-      - store_test_results:
-          path: /tmp/test-reports
-          
-  deploy-stage:
-    docker:
-      - image: ubuntu:14.04
-    working_directory: /tmp/my-project  
-    steps:
-      - run:
-          name: Deploy if tests pass and branch is Staging
-          command: ansible-playbook site.yml -i staging          
-          
-  deploy-prod:
-    docker:
-      - image: ubuntu:14.04
-    working_directory: /tmp/my-project  
-    steps:
-      - run:
-          name: Deploy if tests pass and branch is Master
-          command: ansible-playbook site.yml -i production
-
-workflows:
-  version: 2
-  build-deploy:
-    jobs:
-      - build
-      - deploy-stage:
-          requires:
-            - build
-          filters:
-            branches:
-              only: staging
-      - deploy-prod:
-          requires:
-            - build
-          filters:
-            branches:
-              only: master    
+      - store_artifacts: # store the uberjar as an artifact
+          path: target/circleci-test-0.0.1-SNAPSHOT.jar
