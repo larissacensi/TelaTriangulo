@@ -1,102 +1,53 @@
-version: 2.0
+# .circleci/config.yml
+defaults: &defaults
+  docker:
+    - image: felicianotech/docker-hugo:0.27.1
+  working_directory: ~/project
 
+version: 2
 jobs:
-  checkout_code:
-    docker:
-      - image: circleci/ruby:2.4-node-jessie
-      - image: circleci/postgres:9.4.12-alpine
-    working_directory: ~/circleci-demo-workflows
+  build:
+    <<: *defaults
     steps:
       - checkout
-      - save_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/circleci-demo-workflows
-
-  bundle_dependencies:
-    docker:
-      - image: circleci/ruby:2.4-node-jessie
-      - image: circleci/postgres:9.4.12-alpine
-    working_directory: ~/circleci-demo-workflows
-    steps:
-      - restore_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - run: bundle install --path vendor/bundle
-      - save_cache:
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-          paths:
-            - ~/circleci-demo-workflows/vendor/bundle
-
-  rake_test:
-    docker:
-      - image: circleci/ruby:2.4-node-jessie
-      - image: circleci/postgres:9.4.12-alpine
-    working_directory: ~/circleci-demo-workflows
-    steps:
-      - restore_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - run: bundle --path vendor/bundle
-      - run: bundle exec rake db:create db:schema:load
       - run:
-          name: Run tests
-          command: bundle exec rake
-
-  precompile_assets:
-    docker:
-      - image: circleci/ruby:2.4-node-jessie
-      - image: circleci/postgres:9.4.12-alpine
-    working_directory: ~/circleci-demo-workflows
+          name: "Build Our Statically Generated Docs Website with Hugo"
+          command: HUGO_ENV=production hugo -v -s src/
+      - persist_to_workspace:
+          root: /root/project
+          paths: src/public/
+  html-testing:
+    <<: *defaults
     steps:
-      - restore_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - run: bundle --path vendor/bundle
+      - attach_workspace:
+          at: /root/project
       - run:
-          name: Precompile assets
-          command: bundle exec rake assets:precompile
-      - save_cache:
-          key: v1-assets-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/circleci-demo-workflows/public/assets
-
-  deploy:
-    machine:
-        enabled: true
-    working_directory: ~/circleci-demo-workflows
-    environment:
-      HEROKU_APP: still-shelf-38337
+          name: "Test With HTML Proofer"
+          command: echo "This is where we'd do testing with HTML Proofer."
+  ui-testing:
+    <<: *defaults
     steps:
-      - restore_cache:
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - restore_cache:
-          key: v1-assets-{{ .Environment.CIRCLE_SHA1 }}
+      - attach_workspace:
+          at: /root/project
       - run:
-          name: Deploy Master to Heroku
+          name: "Test With Selenium or Behat"
+          command: echo "This is where we'd run a headless browser and test our site's UI."
+  process-testing:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /root/project
+      - run:
+          name: "Test the commit for org or team processes"
           command: |
-            git push https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP.git master
-
-workflows:
-  version: 2
-  build-and-deploy:
-    jobs:
-      - checkout_code
-      - bundle_dependencies:
-          requires:
-            - checkout_code
-      - rake_test:
-          requires:
-            - bundle_dependencies
-      - precompile_assets:
-          requires:
-            - bundle_dependencies
-      - deploy:
-          requires:
-            - rake_test
-            - precompile_assets
+            echo "This is where we'd test this commit for things our project wants to enforce"
+            echo " such as code formatting, the signing of a CLA, security requirements, etc."
+  deploy:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /root/project
+      - run:
+          name: "Deploy Our Docs Site"
+          command: echo "This is where we'd deploy using rsync, awscli, etc."
+# Below would be the Workflows specific config, which we're leaving off for brevity (this example as already lengthy.
