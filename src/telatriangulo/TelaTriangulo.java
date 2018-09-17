@@ -7,8 +7,6 @@ package telatriangulo;
 
 import java.util.HashSet;
 
-import java.util.Iterator;
-
 import java.util.Scanner;
 
 import java.util.Set;
@@ -39,7 +37,7 @@ public class TelaTriangulo {
 
 
 
-		Set<String> propriedades = new HashSet<String>();
+		Set<String> propriedades = new HashSet<>();
 
 		double hipotenusa = a;
 
@@ -97,11 +95,9 @@ public class TelaTriangulo {
 
 		System.out.println("Propriedades do triangulo ->");
 
-		for (String valor : propriedades) {
-
-			System.out.println(valor);
-
-		}
+                propriedades.forEach((valor) -> {
+                    System.out.println(valor);
+            });
 
 	}
 
