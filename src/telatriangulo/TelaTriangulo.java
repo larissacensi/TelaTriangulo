@@ -34,7 +34,7 @@ public class TelaTriangulo {
 		System.out.println("Informa o valor do lado c");
 
 		double c = sc.nextDouble();
-<<<<<<< HEAD
+
 
 
 
@@ -92,16 +92,15 @@ public class TelaTriangulo {
 
 		}
 
-=======
->>>>>>> 72a280f9dfc83bbeb95b83b545caa62bee4bfac7
+
 		
 		System.out.println("Propriedades do triangulo ->");
 
-<<<<<<< HEAD
+
                 propriedades.forEach((valor) -> {
                     System.out.println(valor);
             });
-=======
+
                 Set<String> propriedades = triangulo.verificar(a, b, c);
                 
 		for (String valor : propriedades) {
@@ -109,7 +108,7 @@ public class TelaTriangulo {
 			System.out.println(valor);
 
 		}
->>>>>>> 72a280f9dfc83bbeb95b83b545caa62bee4bfac7
+
 
 	}             
 
